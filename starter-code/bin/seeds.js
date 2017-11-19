@@ -10,6 +10,8 @@ var salt = bcrypt.genSaltSync(bcryptSalt);
 const password = "ironhack";
 var encryptedPass = bcrypt.hashSync(password, salt);
 
+
+//aqui tenemos cread  o nuestro boss con sus parametros especificados
 const boss = new User({
   username: 'theboss',
   name: 'Gonzalo',
@@ -17,6 +19,9 @@ const boss = new User({
   password: encryptedPass,
   role: 'Boss'
 });
+
+//aqui tenemos creados los cursos con sus parametros especificados
+
 const courses = [
   {
     name: 'Introduction to Ruby on Rails',
@@ -55,7 +60,7 @@ const courses = [
   },
 ];
 
-
+//temenos que recorrer cada objeto para poder visualizarlos
 
 User.create(boss, (err, user) => {
   if (err) {

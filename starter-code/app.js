@@ -4,54 +4,94 @@ const path         = require('path');
 const logger       = require('morgan');
 const cookieParser = require('cookie-parser');
 const bodyParser   = require('body-parser');
-const expressLayouts = require('express-ejs-layouts');
+const mongoose     = require("mongoose");
+// Passport and Bcrypt.
 const session = require("express-session");
+const bcrypt = require("bcrypt");
 const passport = require("passport");
+const LocalStrategy = require("passport-local").Strategy;
+const FbStrategy = require('passport-facebook').Strategy;
 const flash = require("connect-flash");
-const MongoStore = require("connect-mongo")(session);
+const User = require('./models/User')
+const app = express();
 
 // Controllers
 const siteController = require("./routes/siteController");
-
-
+const authController = require('./routes/authController');
+const courseController = require('./routes/courseController');
 // Mongoose configuration
-const mongoose = require("mongoose");
-mongoose.connect("mongodb://localhost/ibi-ironhack", {useMongoClient:true});
+mongoose.connect("mongodb://localhost/ibi-ironhack");
 
-const app = express();
-
-
-
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'ejs');
-app.set('layout','layout');
-app.use(expressLayouts);
-
-app.use(flash());
-
-app.use((req,res,next) =>{
-  res.locals.title = "Wellcome to Ironhack Bureau";
-  next();
-});
-
+// Session middleware con express passport
 app.use(session({
-  secret: "our-passport-local-strategy-app",
+  secret: "express-passport",
   resave: true,
-  saveUninitialized: true,
-  store: new MongoStore({
-    mongooseConnection: mongoose.connection,
-    ttl: 24 * 60 * 60 // 1 day
-  })
+  saveUninitialized: true
 }));
 
-require('./passport/serializers');
-require('./passport/local');
+passport.serializeUser((user, cb) => {
+  cb(null, user._id);
+});
+//deserializeUser
+passport.deserializeUser((id, cb) => {
+  User.findOne({ "_id": id }, (err, user) => {
+    if (err) { return cb(err); }
+    cb(null, user);
+  });
+});
+
+passport.use(new LocalStrategy((username, password, next) => {
+  User.findOne({ username }, (err, user) => {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      return next(null, false, { message: "Incorrect username" });
+    }
+    if (!bcrypt.compareSync(password, user.password)) {
+      return next(null, false, { message: "Incorrect password" });
+    }
+
+    return next(null, user);
+  });
+}));
+
+passport.use(new FbStrategy({
+  clientID: "1918986838353639",
+  clientSecret: "fe290112122851a2d4850990f70efe32",
+  callbackURL: "/auth/facebook/callback"
+}, (accessToken, refreshToken, profile, done) => {
+  User.findOne({ facebookID: profile.id }, (err, user) => {
+    if (err) {
+      return done(err);
+    }
+    if (user) {
+      return done(null, user);
+    }
+    console.log(profile)
+    const newUser = new User({
+      facebookID: profile.id,
+      name: profile.displayName.split(" ")[0],
+      familyName: profile.displayName.split(" ")[1],
+      role: 'Student',
+    });
+
+    newUser.save((err) => {
+      if (err) {
+        return done(err);
+      }
+      done(null, newUser);
+    });
+  });
+
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
 
-
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
 
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
@@ -62,7 +102,9 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
-app.use("/", siteController);
+app.use('/', siteController);
+app.use('/', authController);
+app.use('/courses', courseController);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

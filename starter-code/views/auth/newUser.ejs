@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <form action="/auth/newUser" method="post">
+    <label for="username">Username</label><br>
+    <input type="text" name="username" placeholder="Carreira Nuñez">
+    <br><br>
+    <label for="name">Name</label><br>
+    <input type="text" name="name" placeholder="Nadia">
+    <br><br>
+    <label for="familyName">Family Name</label><br>
+    <input type="text" name="familyName" placeholder="F">
+    <br><br>
+    <label for="password">Password</label><br>
+    <input type="password" name="password" placeholder="Secret password">
+    <br><br>
+    <label for="role">Role</label><br>
+    <select name="role">
+  <option value="Developer">Developer</option>
+  <option value="TA">TA</option>
+</select>
+    <br><br>
+    <button>Create!</button>
+  </form>
+  <%if (typeof(errorMessage)!== "undefined") { %>
+    <%=errorMessage%>
+      <%}%>
+</body>
+
+</html>

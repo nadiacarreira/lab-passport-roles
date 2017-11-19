@@ -1,43 +1,42 @@
-const router = require("express").Router()
-const User = require("../models/User")
-const passport = require('passport')
+const express = require("express");
+const siteController = express.Router();
+const User = require('../models/User');
+// EnsureLogin for private page.
+const ensureLogin = require("connect-ensure-login");
+const passport = require("passport");
 
-
-
-router.get("/", (req, res, next) => {
-  res.render("index")
-})
-
-router.get('/login', (req, res, next) => {
-  res.render('auth/login', { message: req.flash("error") })
-})
-
-router.post("/login", passport.authenticate("local", {
-  successRedirect: "/private",
-  failureRedirect: "/login",
-  failureFlash: true,
-  passReqToCallback: true
-}))
-
-router.post('/logout',(req,res) =>{
-  req.logout()
-  res.redirect("/")
-})
-
-
-router.get('/private', checkRoles('Boss'), (req, res) => {
-  res.render('private', {user: req.user});
+siteController.get("/", (req, res, next) => {
+  res.render("index");
 });
 
-function checkRoles(role) {
-  return function(req, res, next) {
-    if (req.isAuthenticated() && req.user.role === role) {
-      return next();
-    } else {
-      res.redirect('/login')
-    }
+// hacemos una peticion dependiendo de si es boss o si es studient o TA
+siteController.get("/private-profile", ensureLogin.ensureLoggedIn(), (req, res) => {
+  if (req.user.role == "Boss") {
+    res.render("private/boss", { user: req.user });
+  } else if(req.user.role == "Developer" || req.user.role == "TA" ) {
+    res.render('private/devta', { user: req.user })
+  } else {
+    res.render('private/student', { user: req.user })
   }
-}
+});
 
+//
+siteController.get("/team", ensureLogin.ensureLoggedIn(), (req, res) => {
+  if (req.user.role == "Boss" || req.user.role == "Developer" || req.user.role == "TA") {
+    User.find({'role':  {$in: [
+        'Developer',
+        'TA',
+    ]}}, (err, users) => {
+      res.render("private/team", { user: req.user, users : users });
+    });
+  }
+});
 
-module.exports = router
+//
+siteController.get("/alumni", ensureLogin.ensureLoggedIn(), (req, res) => {
+    User.find({'role':  'Student'}, (err, users) => {
+      res.render("private/alumni", { user: req.user, users : users });
+    });
+});
+
+module.exports = siteController;
